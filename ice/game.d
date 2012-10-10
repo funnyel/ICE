@@ -43,7 +43,6 @@ import math.math;
 import math.vector2;
 import math.rect;
 import memory.memory;
-import memory.pool;
 import monitor.monitormanager;
 import platform.platform;
 import time.gametime;
@@ -85,6 +84,13 @@ class GameGUI
                                  "42",
                                  "You were killed",
                                  "Longcat is looooooooooooooooooooooooooooooong",
+                                 "Delirious Biznasty",
+                                 ":o) hOnK",
+                                 "There's a cake in the toilet.",
+                                 "DIE FISH HITLER DIE!"
+                                     "                                                                                "
+                                     "I WONT LET YOU KILL MY PEOPLE!",
+                                 "I'm glasses.",
                                  "You are dead"];
 
         ///Messages shown when the player successfully clears the level.
@@ -93,6 +99,9 @@ class GameGUI
                                    "Nice~",
                                    "Still alive",
                                    "You aren't quite dead yet",
+                                   "MoThErFuCkInG MiRaClEs",
+                                   "PCHOOOOOOOO!",
+                                   "where doing it man WHERE MAKING THIS HAPEN",
                                    "42"];
     
     public:
@@ -582,7 +591,6 @@ class Game
             try
             {
                 playerShipID_ = constructPlayerShip("playership", 
-                                                    Vector2f(400.0f, 536.0f),
                                                     loadYAML(gameDir_.file("ships/playership.yaml")));
             }
             catch(YAMLException e)
@@ -722,9 +730,7 @@ class Game
          *          position  = Starting position of the ship.
          *          yaml      = YAML node to load the ship from.
          */
-        EntityID constructPlayerShip(string name, 
-                                     Vector2f position, 
-                                     YAMLNode yaml)
+        EntityID constructPlayerShip(string name, YAMLNode yaml)
         {
             import component.controllercomponent;
             import component.ondeathcomponent;
@@ -736,9 +742,6 @@ class Game
             auto prototype = EntityPrototype(name, yaml);
             with(prototype)
             {
-                physics    = PhysicsComponent(position, Vector2f(0.0f, -1.0f).angle,
-                                              Vector2f(0.0f, 0.0f));
-
                 if(!prototype.weapon.isNull && prototype.spawner.isNull)
                 {
                     spawner = SpawnerComponent();

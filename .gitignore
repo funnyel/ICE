@@ -1,3 +1,10 @@
+/ice-debug.obj
+*.exe
+*.dll
+/memprof-debug
+/memprof-no-contracts
+/memprof-release
+/cdc.obj
 *.sw*
 *.sv*
 *~
