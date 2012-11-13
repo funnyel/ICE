@@ -13,6 +13,7 @@ import std.array;
 import std.conv;
 import std.exception;
 import std.random;
+import std.stdio;
 import std.string;
 import std.traits;
 import std.typecons;
@@ -27,11 +28,13 @@ import component.enginesystem;
 import component.entitysystem;
 import component.healthsystem;
 import component.movementconstraintsystem;
-import component.ondeathsystem;
 import component.physicssystem;
+import component.playersystem;
 import component.spatialsystem;
 import component.spawnersystem;
 import component.statisticscomponent;
+import component.tagscomponent;
+import component.tagssystem;
 import component.timeoutsystem;
 import component.warheadsystem;
 import component.weaponsystem;
@@ -46,6 +49,7 @@ import memory.memory;
 import monitor.monitormanager;
 import platform.platform;
 import time.gametime;
+import time.time;
 import util.frameprofiler;
 import util.signal;
 import util.yaml;
@@ -55,6 +59,7 @@ import ice.graphicseffect;
 import ice.hud;
 import ice.level;
 import ice.player;
+import ice.playerprofile;
 
 
 /**
@@ -103,7 +108,7 @@ class GameGUI
                                    "PCHOOOOOOOO!",
                                    "where doing it man WHERE MAKING THIS HAPEN",
                                    "42"];
-    
+
     public:
         ///Show the HUD.
         void showHUD(){hud_.show();}
@@ -244,7 +249,6 @@ class GameGUI
             hud_.draw(driver);
         }
 
-
     private:
         /**
          * Construct a GameGUI with specified parameters.
@@ -329,10 +333,28 @@ struct GameSubsystems
         @property EntitySystem entitySystem() pure nothrow {return game_.entitySystem_;}
 }
 
+///Stores various data about the end of a game.
+struct GameOverData
+{
+    ///Did the player win the game?
+    bool gameWon;
+}
+
 ///Class managing a single game between players.
 class Game
 {
     private:
+        /// Possible states of the player ship.
+        enum PlayerState
+        {
+            /// THe player ship has not been spawned yet.
+            PreSpawn,
+            /// The player ship exists.
+            Alive, 
+            /// The player ship has died.
+            Dead
+        }
+
         ///Game phases.
         enum GamePhase
         {
@@ -347,18 +369,24 @@ class Game
         ///Game phase we're currently in.
         GamePhase gamePhase_ = GamePhase.Playing;
 
+        /// Current state of the player ship.
+        PlayerState playerState_;
+
+        /// Statistics (kills, etc.) of the player ship.
+        StatisticsComponent playerStatistics_;
+
         ///Platform used for input.
         Platform platform_;
 
         ///Game area in world space.
         static immutable Rectf gameArea_ = Rectf(0.0f, 0.0f, 800.0f, 600.0f);
-     
+
         ///Player 1.
-        Player player1_;
+        Player player0_;
 
         ///Player ship entity ID (temp, until we have levels).
         EntityID playerShipID_;
-     
+
         ///Was initGameState successful?
         bool gameStateInitialized_;
 
@@ -370,6 +398,9 @@ class Game
 
         ///Game data directory.
         VFSDir gameDir_;
+
+        ///Profile of the player playing the game.
+        PlayerProfile playerProfile_;
 
         ///Game time when the game started.
         real startTime_;
@@ -402,12 +433,14 @@ class Game
         WarheadSystem            warheadSystem_;
         ///Handles entity health and kills entities when they run out of health.
         HealthSystem             healthSystem_;
-        ///Handles callbacks on death of entities.
-        OnDeathSystem            onDeathSystem_;
         ///Handles movement constraints (such as player being limited to the screen).
         MovementConstraintSystem movementConstraintSystem_;
         ///Handles spawning of entities.
         SpawnerSystem            spawnerSystem_;
+        ///Handle entity tagging.
+        TagsSystem               tagSystem_;
+        ///Assigns game players to PlayerComponents.
+        PlayerSystem             playerSystem_;
 
         ///Level the game is running.
         Level level_;
@@ -419,6 +452,9 @@ class Game
         GraphicsEffectManager effectManager_;
 
     public:
+        /// Emitted when the game ends (regardless of who wins).
+        mixin Signal!(GameOverData) atGameOver;
+
         /**
          * Update the game.
          *
@@ -436,11 +472,14 @@ class Game
                 //to keep constant game update tick.
                 gameTime_.doGameUpdates
                 ({
-                    player1_.update();
+                    player0_.update();
 
                     if(gamePhase_ == gamePhase_.Over) {return false;}
 
-                    entitySystem_.update();
+                    {
+                        auto zone = Zone("Entity system update");
+                        entitySystem_.update();
+                    }
 
                     if(gamePhase_ == GamePhase.Playing)
                     {
@@ -448,6 +487,8 @@ class Game
 
                         if(playerShip !is null)
                         {
+                            playerState_ = PlayerState.Alive;
+                            playerStatistics_ = *(playerShip.statistics);
                             const health = playerShip.health;
                             if(health !is null)
                             {
@@ -455,32 +496,44 @@ class Game
                                                         cast(float)health.maxHealth);
                             }
                         }
+                        else if(playerState_ == PlayerState.Alive)
+                        {
+                            playerState_ = PlayerState.Dead;
+                            playerDied();
+                        }
 
                         if(!level_.update())
                         {
                             assert(playerShip !is null, 
                                    "Player ship doesn't exist even though the level was "
                                    "successfully completed");
-                            gameOver(*playerShip, Yes.success);
+                            gameOver(Yes.success);
 
                             return true;
                         }
                     }
 
-                    controllerSystem_.update();
-                    engineSystem_.update();
-                    weaponSystem_.update();
-                    physicsSystem_.update();
-                    movementConstraintSystem_.update();
-                    spatialSystem_.update();
-                    collisionSystem_.update();
-                    warheadSystem_.update();
-                    collisionResponseSystem_.update();
-                    healthSystem_.update();
-                    timeoutSystem_.update();
+                    void zonedUpdate(string systemName)(System system)
+                    {
+                        enum name = systemName ~ " system update";
+                        auto zone = Zone(name);
+                        system.update();
+                    }
 
-                    spawnerSystem_.update();
-                    onDeathSystem_.update();
+                    zonedUpdate!"Player"(playerSystem_);
+                    zonedUpdate!"Controller"(controllerSystem_);
+                    zonedUpdate!"Engine"(engineSystem_);
+                    zonedUpdate!"Weapon"(weaponSystem_);
+                    zonedUpdate!"Physics"(physicsSystem_);
+                    zonedUpdate!"MovementConstraint"(movementConstraintSystem_);
+                    zonedUpdate!"Spatial"(spatialSystem_);
+                    zonedUpdate!"Collision"(collisionSystem_);
+                    zonedUpdate!"Warhead"(warheadSystem_);
+                    zonedUpdate!"CollisionResponse"(collisionResponseSystem_);
+                    zonedUpdate!"Health"(healthSystem_);
+                    zonedUpdate!"Tag"(tagSystem_);
+                    zonedUpdate!"Timeout"(timeoutSystem_);
+                    zonedUpdate!"Spawner"(spawnerSystem_);
 
                     return false;
                 });
@@ -491,10 +544,17 @@ class Game
             //so don't draw either.
             if(!continue_){return false;}
 
-            visualSystem_.update();
+
+            {
+                auto zone = Zone("Visual system update");
+                visualSystem_.update();
+            }
             gui_.draw(videoDriver_);
 
-            effectManager_.draw(videoDriver_, gameTime_);
+            {
+                auto zone = Zone("Effect manager draw");
+                effectManager_.draw(videoDriver_, gameTime_);
+            }
 
             return true;
         }
@@ -523,17 +583,22 @@ class Game
         /**
          * Construct a Game.
          *
-         * Params:  platform  = Platform used for input.
-         *          gui       = Game GUI.
-         *          video     = Video driver used to draw the game.
-         *          gameDir   = Game data directory.
-         *          levelName = File name of the level to load.
+         * Params:  platform    = Platform used for input.
+         *          gui         = Game GUI.
+         *          video       = Video driver used to draw the game.
+         *          gameDir     = Game data directory.
+         *          profile     = Profile of the current player.
+         *          levelSource = YAML source of the level to load.
          */
         this(Platform platform, GameGUI gui, VideoDriver video, VFSDir gameDir,
-             const string levelName)
+             PlayerProfile profile, ref YAMLNode levelSource)
         {
-            gui_             = gui;
-            platform_        = platform;
+            gui_           = gui;
+            platform_      = platform;
+            playerProfile_ = profile;
+
+            scope(failure){clear(player0_);}
+            player0_  = new HumanPlayer(platform_, "Human");
 
             initSystems();
 
@@ -542,15 +607,16 @@ class Game
 
             scope(failure){destroySystems();}
 
-            initGameState(levelName);
+            initGameState(levelSource);
         }
 
         ///Destroy the Game.
         ~this()
         {
+            platform_.showCursor();
             if(gameStateInitialized_)
             {
-                clear(player1_);
+                clear(player0_);
                 clear(level_);
                 platform_.key.disconnect(&keyHandler);
             }
@@ -564,45 +630,35 @@ class Game
          * and player are initialized, or we've failed and they are not 
          * (they are cleaned up if they are already initialized but initGameState fails)
          *
-         * Params:  levelName = Name of the level to load.
+         * Params:  levelSource = YAML source of the level to load.
          * 
          * Throws:  GameStartException on failure.
          */
-        void initGameState(const string levelName)
+        void initGameState(ref YAMLNode levelSource)
         {
-            scope(failure){clear(player1_);}
-            player1_  = new HumanPlayer(platform_, "Human");
-
             scope(failure){clear(level_);}
 
+            platform_.hideCursor();
             //Initialize the level.
             try
             {
-                level_ = new DumbLevel(levelName, loadYAML(gameDir_.file(levelName)),
-                                       GameSubsystems(this));
+                level_ = new DumbLevel(levelSource["name"].as!string, levelSource,
+                                       GameSubsystems(this), playerProfile_.playerShipSpawner);
             }
-            catch(LevelInitializationFailureException e)
+            catch(LevelInitException e)
             {
                 throw new GameStartException("Failed to initialize level " ~
-                                             levelName ~ " : " ~ e.msg);
+                                             levelSource["name"].as!string ~ " : " ~ e.msg);
             }
 
-            //Initialize player ship.
-            try
+            // Called every frame the player ship exists by the tagSystem_.
+            void getPlayerShipID(const EntityID id)
             {
-                playerShipID_ = constructPlayerShip("playership", 
-                                                    loadYAML(gameDir_.file("ships/playership.yaml")));
+                playerShipID_ = id;
             }
-            catch(YAMLException e)
-            {
-                throw new GameStartException("Failed to start game: could not " ~
-                                             "initialize ships: " ~ e.msg);
-            }
-            catch(VFSException e)
-            {
-                throw new GameStartException("Failed to start game: could not " ~
-                                             "initialize ships: " ~ e.msg);
-            }
+            tagSystem_.callOnTag("_PLR", &getPlayerShipID);
+
+            playerState_ = PlayerState.PreSpawn;
 
             gui_.showHUD();
 
@@ -616,7 +672,8 @@ class Game
         void initSystems()
         {
             gameTime_  = new GameTime();
-            startTime_ = gameTime_.gameTime;      
+            startTime_ = gameTime_.gameTime;
+            writeln("Initializing Game subsystems at ", getTime());
 
             //Initialize entity system and game subsystems.
             entitySystem_             = new EntitySystem();
@@ -628,15 +685,16 @@ class Game
             engineSystem_             = new EngineSystem    (entitySystem_, gameTime_);
             spatialSystem_            = new SpatialSystem(entitySystem_, 
                                                           Vector2f(400.0f, 300.0f), 
-                                                          32.0f, 
-                                                          32);
+                                                          48.0f, 
+                                                          24);
             collisionSystem_          = new CollisionSystem(entitySystem_, spatialSystem_);
             collisionResponseSystem_  = new CollisionResponseSystem(entitySystem_);
             warheadSystem_            = new WarheadSystem(entitySystem_);
             healthSystem_             = new HealthSystem(entitySystem_);
-            onDeathSystem_            = new OnDeathSystem(entitySystem_);
             movementConstraintSystem_ = new MovementConstraintSystem(entitySystem_);
             spawnerSystem_            = new SpawnerSystem(entitySystem_, gameTime_);
+            tagSystem_                = new TagsSystem(entitySystem_);
+            playerSystem_             = new PlayerSystem(entitySystem_, [player0_]);
 
             effectManager_            = new GraphicsEffectManager();
         }
@@ -644,6 +702,7 @@ class Game
         ///Destroy game subsystems.
         void destroySystems()
         {
+            writeln("Denitializing Game subsystems at ", getTime());
             clear(visualSystem_);
             clear(controllerSystem_);
             clear(physicsSystem_);
@@ -655,7 +714,6 @@ class Game
             clear(spatialSystem_);
             clear(warheadSystem_);
             clear(healthSystem_);
-            clear(onDeathSystem_);
             clear(movementConstraintSystem_);
             clear(spawnerSystem_);
 
@@ -723,59 +781,27 @@ class Game
             }
         }
 
-        /**
-         * Construct the player ship entity and return its ID.
-         *
-         * Params:  name      = Name, used for debugging.
-         *          position  = Starting position of the ship.
-         *          yaml      = YAML node to load the ship from.
-         */
-        EntityID constructPlayerShip(string name, YAMLNode yaml)
-        {
-            import component.controllercomponent;
-            import component.ondeathcomponent;
-            import component.physicscomponent;
-            import component.playercomponent;
-            import component.spawnercomponent;
-            import component.statisticscomponent;
-
-            auto prototype = EntityPrototype(name, yaml);
-            with(prototype)
-            {
-                if(!prototype.weapon.isNull && prototype.spawner.isNull)
-                {
-                    spawner = SpawnerComponent();
-                }
-
-                controller = ControllerComponent();
-                player     = PlayerComponent(player1_);
-
-                onDeath    = OnDeathComponent(&playerDied);
-
-                statistics = StatisticsComponent();
-            }
-            return entitySystem_.newEntity(prototype);
-        }
-
         ///Called when the player ship has died.
-        void playerDied(ref Entity playerShip)
+        void playerDied()
         {
             //Level is done already.
             if(gamePhase_ != GamePhase.Playing) {return;}
 
             gui_.updatePlayerHealth(0.0f);
-            gameOver(playerShip, No.success);
+            gameOver(No.success);
         }
-
 
         /**
          * Called when the player dies or succeeds in clearing the level.
          *
-         * playerShip = Player ship entity to get statistics from.
          * success    = Has the player succesfully cleared the level or died?
          */
-        void gameOver(ref Entity playerShip, Flag!"success" success)
+        void gameOver(Flag!"success" success)
         {
+            platform_.showCursor();
+            GameOverData gameOverData;
+            gameOverData.gameWon = success;
+            atGameOver.emit(gameOverData);
             gamePhase_ = GamePhase.PreOver;
             //Game over enlarging text effect.
             GraphicsEffect effect = new TextEffect(gameTime_.gameTime,
@@ -809,7 +835,7 @@ class Game
             //Must copy here as the entity system, with the player ship,
             //will be destroyed by the time the effect expires and
             //statistics are passed to the GUI.
-            const statistics = *(playerShip.statistics);
+            const statistics = playerStatistics_;
             //After the first effect ends, destroy all entities and move to the game over phase.
             effect.onExpired.connect(
             { 
@@ -874,18 +900,20 @@ class GameContainer
          *          guiParent   = Parent for all GUI elements used by the game.
          *          videoDriver = Video driver to draw graphics with.
          *          gameDir     = Game data directory.
-         *          levelName   = Name of the level to load.
+         *          profile     = Profile of the current player.
+         *          levelSource = YAML source of the level to load.
          *
          * Returns: Produced Game.
          *
          * Throws:  GameStartException if the game fails to start.
          */
-        Game produce(Platform platform, 
-                     MonitorManager monitor, 
+        Game produce(Platform platform,
+                     MonitorManager monitor,
                      GUIElement guiParent,
                      VideoDriver videoDriver,
                      VFSDir gameDir,
-                     const string levelName)
+                     PlayerProfile profile,
+                     ref YAMLNode levelSource)
         in
         {
             assert(game_ is null,
@@ -902,7 +930,7 @@ class GameContainer
                 gui_     = null;
                 monitor_ = null;
             }
-            game_ = new Game(platform, gui_, videoDriver, gameDir, levelName);
+            game_ = new Game(platform, gui_, videoDriver, gameDir, profile, levelSource);
             monitor_.addMonitorable(game_.entitySystem_, "Entities");
             return game_;
         }

@@ -39,8 +39,6 @@
 <li><a href="component.healthsystem.html">component.healthsystem</a></li>
 <li><a href="component.movementconstraintcomponent.html">component.movementconstraintcomponent</a></li>
 <li><a href="component.movementconstraintsystem.html">component.movementconstraintsystem</a></li>
-<li><a href="component.ondeathcomponent.html">component.ondeathcomponent</a></li>
-<li><a href="component.ondeathsystem.html">component.ondeathsystem</a></li>
 <li><a href="component.ownercomponent.html">component.ownercomponent</a></li>
 <li><a href="component.physicscomponent.html">component.physicscomponent</a></li>
 <li><a href="component.physicssystem.html">component.physicssystem</a></li>
@@ -50,6 +48,8 @@
 <li><a href="component.spawnersystem.html">component.spawnersystem</a></li>
 <li><a href="component.statisticscomponent.html">component.statisticscomponent</a></li>
 <li><a href="component.system.html">component.system</a></li>
+<li><a href="component.tagscomponent.html">component.tagscomponent</a></li>
+<li><a href="component.tagssystem.html">component.tagssystem</a></li>
 <li><a href="component.timeoutsystem.html">component.timeoutsystem</a></li>
 <li><a href="component.visualcomponent.html">component.visualcomponent</a></li>
 <li><a href="component.visualsystem.html">component.visualsystem</a></li>
@@ -71,6 +71,7 @@
 <li><a href="formats.pngdecoder.html">formats.pngdecoder</a></li>
 <li><a href="formats.pngencoder.html">formats.pngencoder</a></li>
 <li><a href="formats.zlib.html">formats.zlib</a></li>
+<li><a href="frameprof.frameprof.html">frameprof.frameprof</a></li>
 <li><a href="graphdata.html">graphdata</a></li>
 <li><a href="gui.guibutton.html">gui.guibutton</a></li>
 <li><a href="gui.guielement.html">gui.guielement</a></li>
@@ -78,6 +79,21 @@
 <li><a href="gui.guimenu.html">gui.guimenu</a></li>
 <li><a href="gui.guimousecontrollable.html">gui.guimousecontrollable</a></li>
 <li><a href="gui.guistatictext.html">gui.guistatictext</a></li>
+<li><a href="gui2.boxmanuallayout.html">gui2.boxmanuallayout</a></li>
+<li><a href="gui2.buttonwidget.html">gui2.buttonwidget</a></li>
+<li><a href="gui2.containerwidget.html">gui2.containerwidget</a></li>
+<li><a href="gui2.event.html">gui2.event</a></li>
+<li><a href="gui2.exceptions.html">gui2.exceptions</a></li>
+<li><a href="gui2.fixedlayout.html">gui2.fixedlayout</a></li>
+<li><a href="gui2.guisystem.html">gui2.guisystem</a></li>
+<li><a href="gui2.layout.html">gui2.layout</a></li>
+<li><a href="gui2.lineeditwidget.html">gui2.lineeditwidget</a></li>
+<li><a href="gui2.linestylemanager.html">gui2.linestylemanager</a></li>
+<li><a href="gui2.rootwidget.html">gui2.rootwidget</a></li>
+<li><a href="gui2.slotwidget.html">gui2.slotwidget</a></li>
+<li><a href="gui2.stylemanager.html">gui2.stylemanager</a></li>
+<li><a href="gui2.widget.html">gui2.widget</a></li>
+<li><a href="gui2.widgetutils.html">gui2.widgetutils</a></li>
 <li><a href="ice.html">ice</a></li>
 <li><a href="ice.credits.html">ice.credits</a></li>
 <li><a href="ice.exceptions.html">ice.exceptions</a></li>
@@ -87,6 +103,7 @@
 <li><a href="ice.ice.html">ice.ice</a></li>
 <li><a href="ice.level.html">ice.level</a></li>
 <li><a href="ice.player.html">ice.player</a></li>
+<li><a href="ice.playerprofile.html">ice.playerprofile</a></li>
 <li><a href="image.html">image</a></li>
 <li><a href="math.math.html">math.math</a></li>
 <li><a href="math.matrix4.html">math.matrix4</a></li>
@@ -196,12 +213,15 @@
 <dd><p>Is this vertex buffer <b>null</b> (uninitialized)?</p>
 
 </dd>
-<dt class="d_decl">this(const GLDrawMode <b>mode</b>);
+<dt class="d_decl">this(const GLDrawMode <b>mode</b>, const size_t <b>preallocate</b>);
 </dt>
 <dd><p>Construct a GLVertexBuffer.
 </p>
 <b>Parameters:</b><div class="pbr"><table class=parms><tr><td valign=top>GLDrawMode <b>mode</b></td>
 <td valign=top>Draw <b>mode</b> of the buffer.</td></tr>
+<tr><td valign=top>size_t <b>preallocate</b></td>
+<td valign=top>Number of vertices to <b>preallocate</b> space for.
+                        Avoids unnecessary reallocations.</td></tr>
 </table></div>
 
 </dd>

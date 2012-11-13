@@ -9,22 +9,22 @@ weapon:
   0: weapons/laser.yaml
   1: weapons/mediumPlasma.yaml
 collidable:
-health: 120
+health: 75
 warhead:
   damage: 80
   killsEntity: false
 dumbScript: dumbscripts/arrows.yaml
 spawner:
-  - entity: explosions/deathbase.yaml 
+  - entity: explosions/deathBase.yaml 
     condition: death
     components:
       visual: visual/arrow.yaml
       physics: 
         position: [0, 0]
       weapon:
-        0: weapons/playerdeath.yaml
+        0: weapons/playerDeath.yaml
       dumbScript: dumbscripts/fire_0.yaml
-  - entity: explosions/spiralsmall.yaml
+  - entity: explosions/spiralSmall.yaml
     condition: death 
     components:
       deathTimeout: 1.2
@@ -32,7 +32,7 @@ spawner:
         position: [16, 0]
         rotation: 0.0
         speed: 16
-  - entity: explosions/spiralsmall.yaml
+  - entity: explosions/spiralSmall.yaml
     condition: death 
     components:
       deathTimeout: 1.2

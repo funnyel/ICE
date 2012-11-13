@@ -19,6 +19,7 @@ import containers.lazyarray;
 import math.vector2;
 import memory.memory;
 import time.gametime;
+import util.frameprofiler;
 import util.yaml;
 
 import component.controllercomponent;
@@ -76,7 +77,10 @@ class WeaponSystem : System
 
                 auto burst = yaml["burst"];
 
-                spawns = FixedArray!Spawn(burst.length);
+                {
+                    auto zone = Zone("WeaponData spawns allocation");
+                    spawns = FixedArray!Spawn(burst.length);
+                }
                 uint i = 0;
                 foreach(ref YAMLNode shot; burst)
                 {
@@ -142,7 +146,7 @@ class WeaponSystem : System
 
                     if(!weaponInstance.spawnsAdded)
                     {
-                        addSpawns(e, *weapon, weaponInstance);
+                        addSpawns(e, *weapon, cast(ubyte)idx, weaponInstance);
                     }
 
                     //Are we firing this weapon?
@@ -179,9 +183,12 @@ class WeaponSystem : System
          *
          * Params:  e              = Entity the weapon instance belongs to.
          *          weapon         = "Class" of the weapon.
+         *          weaponIndex    = Index of the weapon in the WeaponComponent
+         *                           (may be different from weapon slot).
          *          weaponInstance = Instance of the weapon belonging to the entity.
          */
         void addSpawns(ref Entity e, ref WeaponData weapon, 
+                       const ubyte weaponIndex,
                        ref WeaponComponent.Weapon weaponInstance)
         {
             auto spawner = e.spawner;
@@ -190,6 +197,7 @@ class WeaponSystem : System
                    "Code that spawns the entity must ensure that if it has a "
                    "WeaponComponent, it has a SpawnerComponent as well.");
 
+            spawner.preallocateExtraSpawns(weapon.spawns.length);
             //Not by reference - we need a copy so we can modify spawn condition
             foreach(spawn; weapon.spawns)
             {
@@ -197,7 +205,7 @@ class WeaponSystem : System
                 //Spawn condition to spawn when at weapon burst.
                 SpawnCondition condition;
                 condition.type = SpawnCondition.Type.WeaponBurst;
-                condition.weaponIndex = weaponInstance.weaponSlot;
+                condition.weaponIndex = weaponIndex;
                 spawn.condition = condition;
                 spawner.addSpawn(spawn);
             }
@@ -269,8 +277,13 @@ class WeaponSystem : System
             {
                 assert(gameDir_ !is null, 
                        "Trying to load a weapon but game directory has not been set");
-                auto yaml = loadYAML(gameDir_.file(name));
-                output.initialize(name, yaml);
+
+                YAMLNode yamlSource;
+                {
+                    auto zone  = Zone("Weapon data file reading & YAML parsing");
+                    yamlSource = loadYAML(gameDir_.file(name));
+                }
+                output.initialize(name, yamlSource);
             }
             catch(YAMLException e)
             {

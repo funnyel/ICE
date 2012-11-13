@@ -4,97 +4,43 @@
 //          http://www.boost.org/LICENSE_1_0.txt)
 
 
-///Credits screen.
+/// Credits dialog.
 module ice.credits;
 
 
-import gui.guielement;
-import gui.guibutton;
-import gui.guistatictext;
-import platform.platform;
-import util.signal;
+import dgamevfs._;
+
+import gui2.buttonwidget;
+import gui2.guisystem;
+import gui2.rootwidget;
+import ice.guiswapper;
+import util.yaml;
 
 
-/**
- * Credits screen.
- *
- * Signal:
- *     public mixin Signal!() closed
- *
- *     Emitted when this credits dialog is closed.
- */
-class Credits
+/// Credits dialog.
+class Credits: SwappableGUI
 {
     private:
-        ///Credits text.
+        // Credits text.
         static immutable credits_ = 
             "TODO\n";
 
-        ///Parent of the container.
-        GUIElement parent_;
-
-        ///GUI element containing all elements of the credits screen.
-        GUIElement container_;
-        ///Button used to close the screen.
-        GUIButton closeButton_;
-        ///Credits text.
-        GUIStaticText text_;
+        // Root widget of the credits GUI.
+        RootWidget creditsGUI_;
 
     public:
-        ///Emitted when this credits dialog is closed.
-        mixin Signal!() closed;
-
-        /**
-         * Construct a Credits screen.
-         *
-         * Params:  parent = GUI element to attach the credits screen to.
-         */
-        this(GUIElement parent)
+        /// Construct a Credits dialog.
+        /// 
+        /// Params: guiSystem  = A reference to the GUI system (to load widgets with).
+        ///         gameDir    = Game data directory.
+        ///
+        /// Throws: YAMLException on a YAML parsing error.
+        ///         VFSException on a filesystem error.
+        this(GUISystem guiSystem, VFSDir gameDir)
         {
-            parent_ = parent;
-
-            with(new GUIElementFactory)
-            {
-                margin(16, 96, 16, 96);
-                container_ = produce();
-            }
-            parent_.addChild(container_);
-
-            with(new GUIStaticTextFactory)
-            {
-                margin(16, 16, 40, 16);
-                text = credits_;
-                this.text_ = produce();
-            }
-
-            with(new GUIButtonFactory)
-            {
-                x      = "p_left + p_width / 2 - 72";
-                y      = "p_bottom - 32";
-                width  = "144";
-                height = "24";
-                text   = "Close";
-                closeButton_ = produce();
-            }
-
-            container_.addChild(text_);
-            container_.addChild(closeButton_);
-            closeButton_.pressed.connect(&closed.emit);
-        }
-
-        ///Destroy this credits screen.
-        ~this()
-        {
-            container_.die();
-            closed.disconnectAll();
-        }
-
-        ///Key handler for the credits screen (so we can exit with Esc).
-        void keyHandler(KeyState state, Key key, dchar unicode)
-        {
-            if(state == KeyState.Pressed && key == Key.Escape)
-            {
-                closed.emit();
-            }
+            auto creditsGUIFile = gameDir.dir("gui").file("creditsGUI.yaml");
+            creditsGUI_ = guiSystem.loadWidgetTree(loadYAML(creditsGUIFile));
+            super(creditsGUI_);
+            creditsGUI_.close!ButtonWidget.connect({swapGUI_("ice");});
         }
 }

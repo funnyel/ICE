@@ -244,7 +244,7 @@ private:
                 else{a.type_[0 .. type.length] = type[];}
 
                 a.objects_ = objects > uint.max ? uint.max : cast(uint)objects;
-                a.time_ = cast(ushort)(10000.0 * (getTime() - startTime_));
+                a.time_ = cast(uint)(10000.0 * (getTime() - startTime_));
 
                 a.ptr = cast(void*)ptr;
 
@@ -559,7 +559,9 @@ private:
     {
         scope(failure){writeln("Error logging memory usage");}
 
+        writeln("Collecting memory usage profile...");
         string stats = statistics();
+        writeln("Writing memory usage profile...");
 
         auto logs = gameDir.dir("main::logs");
         logs.create();
@@ -582,6 +584,7 @@ private:
     {
         if(suspendMemoryDebugRecording){return;}
         auto allocation = Allocation.construct!(T, file, line)(ptr, objects);
+        allocations_.assumeSafeAppend();
         allocations_ ~= allocation;
 
         const bytes = objects * T.sizeof;
@@ -607,6 +610,7 @@ private:
         bool found = false;
         foreach(ref allocation; allocations_) if(allocation.ptr == oldPtr)
         {
+            pastAllocations_.assumeSafeAppend();
             pastAllocations_ ~= allocation;
             //replace allocation info
             allocation = Allocation.construct!(T, file, line)(newPtr, newObjects);
@@ -635,6 +639,7 @@ private:
         bool found = false;
         foreach(ref allocation; allocations_) if(allocation.ptr == ptr)
         {
+            pastAllocations_.assumeSafeAppend();
             pastAllocations_ ~= allocation;
             //remove by rewriting by the last allocation
             allocation = allocations_[$ - 1];

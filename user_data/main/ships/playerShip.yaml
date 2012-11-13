@@ -1,0 +1,32 @@
+visual: visual/playerShip.yaml
+engine:
+  maxSpeed: 500
+  acceleration: 3500
+volume:
+  aabbox: 
+    min: [-28, -14]
+    max: [28,  14]
+weapon:
+  0: weapons/playerDefaultWeapon.yaml
+  2: weapons/circleOfDeath.yaml
+  3: weapons/activeShield.yaml
+collidable:
+health: 1000
+warhead:
+  damage: 500
+  killsEntity: false
+#keeps the player from leaving the window
+movementConstraint:
+  aabbox: [64, 64, 736, 536]
+spawner:
+  - entity: explosions/playerExplosion.yaml
+    condition: death 
+    components:
+      physics: 
+        position: [0, 0]
+  - entity: explosions/deathBase.yaml 
+    condition: death 
+    components:
+      visual: visual/playerShip.yaml
+      physics: 
+        position: [0, 0]

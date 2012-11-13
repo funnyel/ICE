@@ -31,6 +31,7 @@ import formats.cli;
 import ice.exceptions;
 import ice.ice;
 import util.unittests;
+import memory.allocator;
 import memory.memory;
 
 
@@ -39,14 +40,12 @@ void main(string[] args)
 {
     memory.memory.suspendMemoryDebugRecording = false;
 
-    runUnitTests();
-    
     writeln("Started main()...");
     //will add -h/--help and generate usage info by itself
     auto cli = new CLI();
     cli.description = "ICE 0.1.0\n"
                       "Top-down scrolling shooter written in D.\n"
-                      "Copyright (C) 2010-2012 Ferdinand Majerech, Libor Malis, David Horvath";
+                      "Copyright (C) 2010-2012 Ferdinand Majerech, Libor Malis, David Horvath, Tomas Nguyen";
     cli.epilog = "Report errors at <kiithsacmp@gmail.com> (in English, Czech or Slovak).";
 
     string root = "./data";
@@ -80,6 +79,9 @@ void main(string[] args)
         writeln("Initialized VFS...");
         memory.memory.gameDir = gameDir;
         auto ice = new Ice(gameDir);
+        // This is here due to an unknown std.regex 32bit bug.
+        // It should be moved back to the start later.
+        runUnitTests();
         writeln("Initialized ICE...");
         scope(exit){clear(ice);}
         writeln("Going to run ICE...");
@@ -96,4 +98,6 @@ void main(string[] args)
                 "(maybe data directory is missing?): ", e.msg);
         exit(-1);
     }
+
+    memory.allocator.freeUnusedBuffers.emit();
 }

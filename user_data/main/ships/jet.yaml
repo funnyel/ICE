@@ -8,41 +8,41 @@ volume:
 weapon:
   0: weapons/rocketLauncher.yaml
 collidable:
-health: 100
+health: 80
 warhead:
-  damage: 120
+  damage: 80
   killsEntity: false
 dumbScript: dumbscripts/jets1.yaml
 
 spawner:
-  - entity: explosions/deathbase.yaml 
+  - entity: explosions/deathBase.yaml 
     condition: death
     components:
       visual: visual/jet.yaml
       physics: 
         position: [0, 0]
-  - entity: explosions/jetsmall.yaml
+  - entity: explosions/jetSmall.yaml
     condition: death 
     components:
       physics: 
         position: [32, 0]
         rotation: -1.57
         speed: 16
-  - entity: explosions/jetsmall.yaml
+  - entity: explosions/jetSmall.yaml
     condition: death 
     components:
       physics: 
         position: [-32, 0]
         rotation: 1.57
         speed: -16
-  - entity: explosions/jetsmall.yaml
+  - entity: explosions/jetSmall.yaml
     condition: death 
     components:
       physics: 
         position: [24, 8]
         rotation: -1.57
         speed: 32
-  - entity: explosions/jetsmall.yaml
+  - entity: explosions/jetSmall.yaml
     condition: death 
     components:
       physics: 

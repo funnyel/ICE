@@ -36,16 +36,16 @@ Modding reference:
    modding_reference/component_engine
    modding_reference/component_health
    modding_reference/component_movementconstraint
-   modding_reference/component_ondeath
    modding_reference/component_owner
    modding_reference/component_player
    modding_reference/component_physics 
    modding_reference/component_spawner
    modding_reference/component_statistics
+   modding_reference/component_tags
    modding_reference/component_visual
    modding_reference/component_volume
    modding_reference/component_warhead
    modding_reference/component_weapon
+   modding_reference/level
 .. TODO 
-.. modding_reference/level
 .. modding_reference/entity

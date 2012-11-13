@@ -1,0 +1,11 @@
+visual: visual/playerLineFragment.yaml
+engine : 
+  maxSpeed       : 2000
+  acceleration   : 4000  #-1 is instant
+deathTimeout: 0.5
+volume:
+  aabbox:
+    min: [-1, -12]
+    max: [1,  6]
+warhead:
+  damage: 2

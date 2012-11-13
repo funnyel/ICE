@@ -57,9 +57,12 @@ package struct GLVertexBuffer(Vertex)
         /**
          * Construct a GLVertexBuffer.
          *
-         * Params:  mode = Draw mode of the buffer.
+         * Params:  mode        = Draw mode of the buffer.
+         *          preallocate = Number of vertices to preallocate space for.
+         *                        Avoids unnecessary reallocations.
+         *                        Will preallocate 2 times as many indices.
          */
-        this(const GLDrawMode mode)
+        this(const GLDrawMode mode, const size_t preallocate)
         in
         {
             assert(mode == GLDrawMode.VertexArray ||
@@ -67,8 +70,8 @@ package struct GLVertexBuffer(Vertex)
         }
         body
         {
-            verticesAllocated_ = allocArray!Vertex(8);
-            indicesAllocated_  = allocArray!uint(8);
+            verticesAllocated_ = allocArray!Vertex(preallocate);
+            indicesAllocated_  = allocArray!uint(preallocate * 2);
             vertices_          = verticesAllocated_[0 .. 0];
             indices_           = indicesAllocated_[0 .. 0];
             mode_              = mode;
@@ -134,7 +137,8 @@ package struct GLVertexBuffer(Vertex)
         {
             if(verticesAllocated_.length < len)
             {
-                verticesAllocated_ = realloc(verticesAllocated_, len);
+                verticesAllocated_ = 
+                    realloc(verticesAllocated_, verticesAllocated_.length * 2);
             }
             vertices_ = verticesAllocated_[0 .. len];
         }
@@ -144,7 +148,8 @@ package struct GLVertexBuffer(Vertex)
         {
             if(indicesAllocated_.length < len)
             {
-                indicesAllocated_ = realloc(indicesAllocated_, len);
+                indicesAllocated_ = 
+                    realloc(indicesAllocated_, indicesAllocated_.length * 2);
             }
             indices_ = indicesAllocated_[0 .. len];
         }
@@ -187,7 +192,7 @@ package struct GLVertexBuffer(Vertex)
             glEnableVertexAttribArray(position);
             glEnableVertexAttribArray(color);
             static if(textured){glEnableVertexAttribArray(texcoord);}                                 
-            
+
             if(mode_ == GLDrawMode.VertexBuffer)
             {
                 glBindBuffer(GL_ARRAY_BUFFER, vbo_);
@@ -206,10 +211,10 @@ package struct GLVertexBuffer(Vertex)
             {
                 glVertexAttribPointer(texcoord, 2, GL_FLOAT, GL_FALSE, Vertex.sizeof, 
                                       data + Vertex.texcoordOffset);
-            }                                 
+            }
             glVertexAttribPointer(color, 4, GL_UNSIGNED_BYTE, GL_TRUE, Vertex.sizeof, 
                                   data + Vertex.colorOffset);
-            
+
             //draw
             glDrawElements(GL_TRIANGLES, group.vertices, GL_UNSIGNED_INT, 
                            (mode_ == GLDrawMode.VertexArray ? indices_.ptr
